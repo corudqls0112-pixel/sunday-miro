@@ -50,8 +50,15 @@ button {margin:5px; padding:10px;}
 
 <div id="ending">
 <h1>🎉 축하합니다!</h1>
-<p>당신은 생명의 물을 찾았습니다!</p>
-<p>예수님만이 우리의 참된 생명입니다 💧</p>
+
+<p>💧 예수님의 생명수를 마신 우리는</p>
+<p>이제 영원히 목마르지 않아요!</p>
+
+<p style="margin-top:15px;">🙋‍♂️ 예수님의 생명수를 마신 사람은 누구죠?</p>
+<p><strong>👉 (우리요!!)</strong></p>
+
+<p style="margin-top:15px;">우리는 하나님을 사랑하는<br>하나님의 자녀예요 💛</p>
+
 <button onclick="location.reload()">다시 하기</button>
 </div>
 
@@ -82,6 +89,13 @@ gameStarted=true;
 setTimeout(()=>{satan.active=true;},15000);
 }
 
+function checkWin(){
+    if(rooms.every(r=>r.solved)){
+        setTimeout(()=>{
+            document.getElementById("ending").style.display="flex";
+        }, 500);
+    }
+}
 const walls = [
 
     // 외곽
@@ -256,13 +270,6 @@ openQuestion(r.id);
 });
 }
 
-// 승리
-function checkWin(){
-if(rooms.every(r=>r.solved)){
-document.getElementById("ending").style.display="flex";
-}
-}
-
 function drawPlayer(){
     // 빛 퍼짐
     let glow = ctx.createRadialGradient(
@@ -290,15 +297,18 @@ function drawPlayer(){
 }
 
 function drawSatan(){
-if(!satan.active) return;
-ctx.fillStyle="red";
-ctx.beginPath();
-ctx.arc(satan.x+7,satan.y+7,7,0,Math.PI*2);
-ctx.fill();
-ctx.shadowColor = "red";
-ctx.shadowBlur = 15;
-}
+    if(!satan.active) return;
 
+    ctx.shadowColor = "red";
+    ctx.shadowBlur = 15;
+
+    ctx.fillStyle="red";
+    ctx.beginPath();
+    ctx.arc(satan.x+7,satan.y+7,7,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+}
 function drawWalls(){
 ctx.fillStyle="#888";
 walls.forEach(w=>ctx.fillRect(w.x,w.y,w.w,w.h));
@@ -307,25 +317,24 @@ walls.forEach(w=>ctx.fillRect(w.x,w.y,w.w,w.h));
 function drawLight(){
     ctx.save();
 
-    // 전체 어둠
-    ctx.fillStyle="rgba(0,0,0,0.85)"; // 🔥 덜 어둡게
+    // 🔥 너무 어둡지 않게 수정
+    ctx.fillStyle="rgba(0,0,0,0.6)";
     ctx.fillRect(0,0,500,500);
 
     ctx.globalCompositeOperation="destination-out";
 
-    // 부드러운 빛
     let g=ctx.createRadialGradient(
-        player.x+7, player.y+7, 20,
-        player.x+7, player.y+7, 140
+        player.x+7, player.y+7, 10,
+        player.x+7, player.y+7, 120
     );
 
     g.addColorStop(0,"rgba(0,0,0,1)");
-    g.addColorStop(0.5,"rgba(0,0,0,0.4)");
+    g.addColorStop(0.7,"rgba(0,0,0,0.2)");
     g.addColorStop(1,"rgba(0,0,0,0)");
 
     ctx.fillStyle=g;
     ctx.beginPath();
-    ctx.arc(player.x+7, player.y+7, 140,0,Math.PI*2);
+    ctx.arc(player.x+7, player.y+7, 120,0,Math.PI*2);
     ctx.fill();
 
     ctx.restore();
@@ -350,11 +359,11 @@ function gameLoop(){
         moveSatan();
 
         drawWalls();
-        drawRooms();   // 🔥 이것도 꼭 추가 (지금 빠져있음!)
+        drawRooms();
 
-        drawLight();   // 👉 먼저 어둠 + 빛
+        drawLight();
 
-        drawPlayer();  // 👉 항상 마지막 (그래야 안 가려짐)
+        drawPlayer();
         drawSatan();
 
         checkRoom();
@@ -364,6 +373,8 @@ function gameLoop(){
 
     requestAnimationFrame(gameLoop);
 }
+
+gameLoop();
 </script>
 
 </body>
