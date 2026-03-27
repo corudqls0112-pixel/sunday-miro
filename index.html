@@ -263,12 +263,30 @@ document.getElementById("ending").style.display="flex";
 }
 }
 
-// 그리기
 function drawPlayer(){
-ctx.fillStyle="yellow";
-ctx.beginPath();
-ctx.arc(player.x+7,player.y+7,7,0,Math.PI*2);
-ctx.fill();
+    // 빛 퍼짐
+    let glow = ctx.createRadialGradient(
+        player.x+7, player.y+7, 0,
+        player.x+7, player.y+7, 30
+    );
+
+    glow.addColorStop(0,"rgba(255,255,150,1)");
+    glow.addColorStop(1,"rgba(255,255,150,0)");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(player.x+7, player.y+7, 30, 0, Math.PI*2);
+    ctx.fill();
+
+    // 캐릭터 본체
+    ctx.fillStyle="#FFD700";
+    ctx.beginPath();
+    ctx.arc(player.x+7, player.y+7, 6, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=2;
+    ctx.stroke();
 }
 
 function drawSatan(){
@@ -277,6 +295,8 @@ ctx.fillStyle="red";
 ctx.beginPath();
 ctx.arc(satan.x+7,satan.y+7,7,0,Math.PI*2);
 ctx.fill();
+ctx.shadowColor = "red";
+ctx.shadowBlur = 15;
 }
 
 function drawWalls(){
@@ -284,47 +304,66 @@ ctx.fillStyle="#888";
 walls.forEach(w=>ctx.fillRect(w.x,w.y,w.w,w.h));
 }
 
-// 빛
 function drawLight(){
-ctx.fillStyle="rgba(0,0,0,0.95)";
-ctx.fillRect(0,0,500,500);
+    ctx.save();
 
-ctx.globalCompositeOperation="destination-out";
-let g=ctx.createRadialGradient(player.x+7,player.y+7,20,player.x+7,player.y+7,120);
-g.addColorStop(0,"rgba(0,0,0,1)");
-g.addColorStop(1,"rgba(0,0,0,0)");
+    // 전체 어둠
+    ctx.fillStyle="rgba(0,0,0,0.85)"; // 🔥 덜 어둡게
+    ctx.fillRect(0,0,500,500);
 
-ctx.fillStyle=g;
-ctx.beginPath();
-ctx.arc(player.x+7,player.y+7,120,0,Math.PI*2);
-ctx.fill();
+    ctx.globalCompositeOperation="destination-out";
 
-ctx.globalCompositeOperation="source-over";
+    // 부드러운 빛
+    let g=ctx.createRadialGradient(
+        player.x+7, player.y+7, 20,
+        player.x+7, player.y+7, 140
+    );
+
+    g.addColorStop(0,"rgba(0,0,0,1)");
+    g.addColorStop(0.5,"rgba(0,0,0,0.4)");
+    g.addColorStop(1,"rgba(0,0,0,0)");
+
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.arc(player.x+7, player.y+7, 140,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
 }
 
-// 루프
+function drawRooms(){
+    rooms.forEach(r=>{
+        ctx.globalAlpha = r.solved ? 0.6 : 0.25;
+
+        ctx.fillStyle = r.solved ? "#00ff88" : "#ff4444";
+        ctx.fillRect(r.x, r.y, 30, 30);
+
+        ctx.globalAlpha = 1;
+    });
+}
+
 function gameLoop(){
-ctx.clearRect(0,0,500,500);
+    ctx.clearRect(0,0,500,500);
 
-if(gameStarted){
-move();
-moveSatan();
+    if(gameStarted){
+        move();
+        moveSatan();
 
-drawWalls();
-drawPlayer();
-drawSatan();
+        drawWalls();
+        drawRooms();   // 🔥 이것도 꼭 추가 (지금 빠져있음!)
 
-drawLight();
+        drawLight();   // 👉 먼저 어둠 + 빛
 
-checkRoom();
-checkHit();
-checkWin();
+        drawPlayer();  // 👉 항상 마지막 (그래야 안 가려짐)
+        drawSatan();
+
+        checkRoom();
+        checkHit();
+        checkWin();
+    }
+
+    requestAnimationFrame(gameLoop);
 }
-
-requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
 </script>
 
 </body>
