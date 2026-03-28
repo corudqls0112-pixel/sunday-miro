@@ -123,6 +123,14 @@ const mapGrids=[
     ]
 ];
 
+// 스테이지별 water 위치 (벽과 겹치지 않도록)
+const waterPositions = [
+    {x:75, y:75},   // Stage1
+    {x:325, y:125}, // Stage2
+    {x:175, y:375}, // Stage3
+    {x:400, y:75}   // Stage4
+];
+
 // walls 배열 생성
 function loadWallsFromGrid(stageIndex){
     walls=[];
@@ -176,15 +184,8 @@ function loadStage(){
         dots.push({x,y});
     }
 
-    // water 위치도 벽 안쪽
-    let ok=false;
-    while(!ok){
-        water={x:Math.random()*450,y:Math.random()*450,active:true};
-        ok=true;
-        for(let w of walls){
-            if(water.x>w.x && water.x<w.x+w.w && water.y>w.y && water.y<w.y+w.h){ ok=false; break; }
-        }
-    }
+    // water 위치 고정
+    water = {...waterPositions[stage-1], active:true};
 
     setTimeout(()=>{ showAlert("⏳ 곧 사탄 등장..."); }, 500);
     setTimeout(()=>{ satan.active=true; showAlert("😈 사탄 등장!"); }, 2000);
