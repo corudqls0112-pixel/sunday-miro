@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>생명의 물 미로 게임</title>
+<title>생명의 물 게임 (완성판)</title>
 
 <style>
 body {margin:0; background:black; color:white; text-align:center;}
@@ -32,6 +32,15 @@ display:none;
 z-index:10;
 }
 
+#alert {
+position:absolute;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:30px;
+display:none;
+}
+
 button {margin:5px; padding:10px;}
 </style>
 </head>
@@ -40,28 +49,16 @@ button {margin:5px; padding:10px;}
 
 <div id="startScreen">
 <h1>💧 생명의 물</h1>
-<p>
-예수님께서 우리를 초청하셨습니다.<br><br>
-“내가 주는 물을 마시는 자는 영원히 목마르지 아니하리라”<br><br>
-이제 우리는 생명의 물을 찾아 미로로 들어갑니다…
-</p>
-<button onclick="startGame()">들어가기</button>
+<button onclick="startGame()">시작</button>
 </div>
 
 <div id="ending">
-<h1>🎉 축하합니다!</h1>
-
-<p>💧 예수님의 생명수를 마신 우리는</p>
-<p>이제 영원히 목마르지 않아요!</p>
-
-<p style="margin-top:15px;">🙋‍♂️ 예수님의 생명수를 마신 사람은 누구죠?</p>
-<p><strong>👉 (우리요!!)</strong></p>
-
-<p style="margin-top:15px;">우리는 하나님을 사랑하는<br>하나님의 자녀예요 💛</p>
-
-<button onclick="location.reload()">다시 하기</button>
+<h1>🎉 클리어!</h1>
+<p>우리는 생명수를 얻었습니다!</p>
+<button onclick="location.reload()">다시</button>
 </div>
 
+<div id="alert"></div>
 <canvas id="game" width="500" height="500"></canvas>
 <div id="questionBox"></div>
 
@@ -69,335 +66,458 @@ button {margin:5px; padding:10px;}
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+let stage=1;
+let maxStage=4;
+let score=0;
+
 let gameStarted=false;
 let isQuestionOpen=false;
+let freeze=false;
 
-let player={x:20,y:20,size:14,speed:2};
-let satan={x:480,y:480,size:14,speed:2.8,active:false};
+let player={x:20,y:20,size:10,speed:2};
+let satan={x:480,y:480,size:12,speed:2,active:false};
 
-let startPos={x:20,y:20};
-
+let dots=[];
+let water=null;
+let lives = 3;
+    
 let keys={};
 document.addEventListener("keydown",e=>keys[e.key]=true);
 document.addEventListener("keyup",e=>keys[e.key]=false);
 
-function startGame(){
-    document.getElementById("startScreen").style.display="none";
-    gameStarted=true;
-
-    setTimeout(()=>{satan.active=true;},15000);
-
-    setTimeout(()=>{satan.speed=3.2;},30000);
-    setTimeout(()=>{satan.speed=3.8;},45000);
-}
-    
-function checkWin(){
-    if(rooms.every(r=>r.solved)){
-        setTimeout(()=>{
-            document.getElementById("ending").style.display="flex";
-        }, 500);
-    }
-}
-const walls = [
-
-    // 외곽
-    {x:0,y:0,w:500,h:10},
-    {x:0,y:0,w:10,h:500},
-    {x:0,y:490,w:500,h:10},
-    {x:490,y:0,w:10,h:500},
-
-    // 1층 가로벽
-    {x:50,y:50,w:400,h:10},
-    {x:50,y:100,w:350,h:10},
-    {x:100,y:150,w:350,h:10},
-
-    // 2층 세로벽
-    {x:50,y:50,w:10,h:300},
-    {x:150,y:100,w:10,h:300},
-    {x:250,y:50,w:10,h:300},
-    {x:350,y:100,w:10,h:300},
-
-    // 중간 막힘 구조
-    {x:50,y:350,w:200,h:10},
-    {x:300,y:350,w:150,h:10},
-
-    // 하단 복잡 구조
-    {x:50,y:400,w:300,h:10},
-    {x:100,y:450,w:300,h:10},
-
-    {x:100,y:300,w:10,h:100},
-    {x:200,y:300,w:10,h:150},
-    {x:300,y:300,w:10,h:100},
-
-// 중앙 구조 (진짜 입구)
-{x:200,y:200,w:40,h:10},   // 왼쪽 벽
-{x:300,y:200,w:50,h:10},   // 오른쪽 벽 → 중간 크게 뚫림
-
-{x:200,y:200,w:10,h:100},  // 왼쪽 세로
-{x:340,y:200,w:10,h:100},  // 오른쪽 세로
-
-];
-    
-// 방
-let rooms=[
-{x:440,y:20,solved:false,id:0},
-{x:440,y:440,solved:false,id:1},
-{x:20,y:440,solved:false,id:2},
-{x:230,y:230,solved:false,id:3} // 중앙
-];
-
-// 문제
 const questions=[
 {q:"예수님이 주시는 물은?",a:["달콤","시원","영원히 목마르지 않는다","쓴맛"],correct:2},
-{q:"생수의 강은 누구에게?",a:["닮은","외치는","믿는","따르는"],correct:2},
+{q:"생수의 강은 누구에게?",a:["닮은 자","외치는 자","믿는 자","따르는 자"],correct:2},
 {q:"새로운 피조물은?",a:["아담","부모","예수님","목사님"],correct:2},
 {q:"우리는 누구를 원하는가?",short:true}
 ];
 
-// 충돌
+function startGame(){
+document.getElementById("startScreen").style.display="none";
+gameStarted=true;
+loadStage();
+}
+
+function showAlert(text){
+let a=document.getElementById("alert");
+a.innerText=text;
+a.style.display="block";
+setTimeout(()=>a.style.display="none",1500);
+}
+
+let walls=[]; // 전역 선언 추가!
+let maps = [
+
+/* STAGE 1 */
+[
+{x:0,y:0,w:200,h:10},
+{x:300,y:0,w:200,h:10},
+{x:0,y:490,w:500,h:10},
+{x:490,y:0,w:10,h:500},
+
+{x:50,y:50,w:400,h:10},
+{x:50,y:100,w:400,h:10},
+{x:50,y:150,w:400,h:10},
+
+{x:50,y:200,w:150,h:10},
+{x:300,y:200,w:150,h:10},
+
+{x:50,y:250,w:400,h:10},
+
+{x:50,y:300,w:150,h:10},
+{x:300,y:300,w:150,h:10},
+
+{x:50,y:350,w:400,h:10},
+
+{x:50,y:50,w:10,h:300},
+{x:150,y:50,w:10,h:300},
+{x:250,y:50,w:10,h:300},
+{x:350,y:50,w:10,h:300},
+{x:450,y:50,w:10,h:300}
+],
+
+/* STAGE 2 */
+[
+{x:0,y:0,w:500,h:10},
+{x:0,y:0,w:10,h:500},
+{x:0,y:490,w:500,h:10},
+{x:490,y:0,w:10,h:500},
+
+{x:50,y:50,w:300,h:10},
+{x:200,y:100,w:250,h:10},
+{x:50,y:150,w:300,h:10},
+
+{x:100,y:200,w:300,h:10},
+{x:50,y:250,w:250,h:10},
+
+{x:150,y:300,w:300,h:10},
+{x:50,y:350,w:200,h:10},
+
+{x:50,y:50,w:10,h:350},
+{x:150,y:100,w:10,h:300},
+{x:300,y:50,w:10,h:350},
+{x:400,y:100,w:10,h:300}
+],
+
+/* STAGE 3 */
+[
+{x:0,y:0,w:500,h:10},
+{x:0,y:0,w:10,h:500},
+{x:0,y:490,w:500,h:10},
+{x:490,y:0,w:10,h:500},
+
+{x:50,y:50,w:400,h:10},
+{x:50,y:100,w:300,h:10},
+{x:150,y:150,w:300,h:10},
+
+{x:50,y:200,w:200,h:10},
+{x:250,y:250,w:200,h:10},
+
+{x:50,y:300,w:300,h:10},
+{x:200,y:350,w:250,h:10},
+
+{x:100,y:50,w:10,h:300},
+{x:200,y:100,w:10,h:300},
+{x:300,y:50,w:10,h:300},
+{x:400,y:100,w:10,h:300}
+],
+
+/* STAGE 4 */
+[
+{x:0,y:0,w:500,h:10},
+{x:0,y:0,w:10,h:500},
+{x:0,y:490,w:500,h:10},
+{x:490,y:0,w:10,h:500},
+
+{x:50,y:50,w:400,h:10},
+{x:50,y:100,w:400,h:10},
+{x:50,y:150,w:400,h:10},
+{x:50,y:200,w:400,h:10},
+{x:50,y:250,w:400,h:10},
+{x:50,y:300,w:400,h:10},
+
+{x:100,y:50,w:10,h:300},
+{x:200,y:100,w:10,h:300},
+{x:300,y:50,w:10,h:300},
+{x:400,y:100,w:10,h:300}
+]
+
+];
+    
+function loadStage(){
+    player.x=20; player.y=20;
+    satan.x=480; satan.y=480;
+    satan.active=false;
+    freeze=false;
+
+    satan.speed = 1 + stage * 0.3;
+    walls = maps[stage-1];
+
+    dots=[];
+    for(let i=0;i<80;i++){
+        dots.push({x:Math.random()*480,y:Math.random()*480});
+    }
+
+    water={
+        x:Math.random()*450,
+        y:Math.random()*450,
+        active:true
+    };
+
+    setTimeout(()=>{
+        showAlert("⏳ 곧 사탄 등장...");
+    }, 8000 - stage*1500);
+
+    setTimeout(()=>{
+        satan.active=true;
+        showAlert("😈 사탄 등장!");
+    }, 12000 - stage*2000);
+}
+    
 function collide(obj,x,y){
-if(x<0||y<0||x+obj.size>500||y+obj.size>500) return true;
 for(let w of walls){
-if(x<w.x+w.w && x+obj.size>w.x && y<w.y+w.h && y+obj.size>w.y){
+if(x<w.x+w.w && x+obj.size>w.x &&
+   y<w.y+w.h && y+obj.size>w.y){
 return true;
 }
 }
 return false;
 }
-
-// 이동
+    
 function move(){
 if(!gameStarted||isQuestionOpen) return;
 
-let nx=player.x, ny=player.y;
+let nx=player.x;
+let ny=player.y;
+
 if(keys["ArrowUp"]) ny-=player.speed;
 if(keys["ArrowDown"]) ny+=player.speed;
 if(keys["ArrowLeft"]) nx-=player.speed;
 if(keys["ArrowRight"]) nx+=player.speed;
 
 if(!collide(player,nx,ny)){
-player.x=nx; player.y=ny;
-}
+    player.x=nx;
+    player.y=ny;
 }
 
-// 😈 사탄 AI
+// 🔥 여기 추가 (포탈)
+if(player.x < 0) player.x = 490;
+if(player.x > 500) player.x = 10;
+if(player.y < 0) player.y = 490;
+if(player.y > 500) player.y = 10;
+}
+
 function moveSatan(){
-    if(!satan.active) return;
+if(!satan.active||freeze) return;
 
-    let dx=player.x - satan.x;
-    let dy=player.y - satan.y;
+let dx=player.x - satan.x;
+let dy=player.y - satan.y;
 
-    let dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist === 0) return;
+let dist=Math.sqrt(dx*dx+dy*dy);
 
+// 🔥 가까울 때만 추적
+if(dist < 200){
+if(dist === 0) return;
     let stepX = (dx/dist)*satan.speed;
     let stepY = (dy/dist)*satan.speed;
 
-    // 🔥 X축 먼저 이동
-    if(!collide(satan, satan.x + stepX, satan.y)){
-        satan.x += stepX;
-    }
+    // 벽 처리 + 우회
+ // X 이동
+if(!collide(satan, satan.x+stepX, satan.y)){
+    satan.x += stepX;
+}
 
-    // 🔥 Y축 따로 이동
-    if(!collide(satan, satan.x, satan.y + stepY)){
-        satan.y += stepY;
-    }
-    // 막히면 랜덤 탈출
-if(
-    collide(satan, satan.x + stepX, satan.y) &&
-    collide(satan, satan.x, satan.y + stepY)
-){
-    satan.x += (Math.random()-0.5)*20;
-    satan.y += (Math.random()-0.5)*20;
+// Y 이동
+if(!collide(satan, satan.x, satan.y+stepY)){
+    satan.y += stepY;
 }
 }
 
-// 충돌 (사탄)
+// 🔥 랜덤 움직임 (멍청하게 만들기)
+if(Math.random() < 0.03){
+    let rx = satan.x + (Math.random() - 0.5) * 30;
+    let ry = satan.y + (Math.random() - 0.5) * 30;
+
+    if(!collide(satan, rx, ry)){
+        satan.x = rx;
+        satan.y = ry;
+    }
+}
+}
 function checkHit(){
-let dx=player.x - satan.x;
-let dy=player.y - satan.y;
+let dx=player.x-satan.x;
+let dy=player.y-satan.y;
+
 if(Math.abs(dx)<10 && Math.abs(dy)<10){
-gameOver();
-}
-}
 
-// 게임오버
-function gameOver(){
-    alert("😈 사탄에게 잡혔다! 처음부터 다시!");
+    lives--;
 
-    // 🔥 문제창 닫기
-    closeBox();
+    if(lives <= 0){
+        alert("💀 게임오버");
+        location.reload();
+        return;
+    }
 
-    player.x=startPos.x;
-    player.y=startPos.y;
+    showAlert("😈 잡힘! 남은 목숨: "+lives);
+
+    // 위치 초기화
+    player.x=20;
+    player.y=20;
     satan.x=480;
     satan.y=480;
     satan.active=false;
 
-    rooms.forEach(r=>r.solved=false);
+    setTimeout(()=>{satan.active=true;},5000);
+}
+}
+    
+// 점 먹기
+function eatDots(){
+dots=dots.filter(d=>{
+let dx=player.x-d.x;
+let dy=player.y-d.y;
 
-    setTimeout(()=>{satan.active=true;},15000);
+if(Math.abs(dx)<8 && Math.abs(dy)<8){
+score++;
+return false;
+}
+
+return true;
+});
+
+// 🔥 여기로 이동!
+if(dots.length === 0 && !isQuestionOpen){
+    openQuestion();
+}
+}
+
+
+// 생명수
+function checkWater(){
+if(!water.active) return;
+
+let dx=player.x-water.x;
+let dy=player.y-water.y;
+
+if(Math.abs(dx)<10 && Math.abs(dy)<10){
+water.active=false;
+freeze=true;
+
+showAlert("💧 생명수! 사탄 멈춤!");
+
+setTimeout(()=>freeze=false,5000);
+}
 }
 
 // 문제
-function openQuestion(id){
+function openQuestion(){
 isQuestionOpen=true;
-let box=document.getElementById("questionBox");
-let q=questions[id];
+freeze=true;
+satan.active=false; // 추가
 
-box.innerHTML=`<p>${q.q}</p>`;
+let box=document.getElementById("questionBox");
+let q=questions[stage-1];
+
+box.innerHTML=`<p>Stage ${stage}</p><p>${q.q}</p>`;
 
 if(q.short){
-box.innerHTML+=`<input id="answer"><button onclick="checkShort(${id})">확인</button>`;
+box.innerHTML+=`<input id="answer"><button onclick="checkShort()">확인</button>`;
 }else{
 q.a.forEach((t,i)=>{
-box.innerHTML+=`<button onclick="check(${id},${i})">${t}</button>`;
+box.innerHTML+=`<button onclick="check(${i})">${t}</button>`;
 });
 }
 
 box.style.display="block";
 }
 
-// 체크
-function check(id,choice){
-if(choice===questions[id].correct){
-rooms[id].solved=true;
-closeBox();
+function check(choice){
+let q=questions[stage-1];
+if(choice===q.correct){
+nextStage();
 }else{
-gameOver();
+location.reload();
 }
 }
 
-function checkShort(id){
+function checkShort(){
 let val=document.getElementById("answer").value;
 if(val.includes("하나님")){
-rooms[id].solved=true;
-closeBox();
+nextStage();
 }else{
-gameOver();
+location.reload();
 }
 }
-
+    
 function closeBox(){
 document.getElementById("questionBox").style.display="none";
 isQuestionOpen=false;
+freeze=false;
+satan.active=true;
+}
+    
+function nextStage(){
+
+closeBox(); // ✅ 반드시 있어야 함
+
+// 맵 붕괴
+walls = [];
+
+showAlert("💥 맵 붕괴!");
+
+setTimeout(()=>{
+    stage++;
+
+    if(stage>maxStage){
+        document.getElementById("ending").style.display="flex";
+        return;
+    }
+
+    showAlert("✨ 다음 스테이지!");
+    loadStage();
+
+},1000);
 }
 
-// 방 체크
-function checkRoom(){
+// 중앙 도달 시 문제
+function checkCenter(){
 if(isQuestionOpen) return;
 
-rooms.forEach(r=>{
-if(!r.solved &&
-player.x<r.x+40 && player.x+player.size>r.x &&
-player.y<r.y+40 && player.y+player.size>r.y){
-openQuestion(r.id);
+if(player.x>220 && player.x<260 &&
+   player.y>220 && player.y<260){
+openQuestion();
 }
-});
 }
 
+// 그리기
 function drawPlayer(){
-    // 빛 퍼짐
-    let glow = ctx.createRadialGradient(
-        player.x+7, player.y+7, 0,
-        player.x+7, player.y+7, 30
-    );
-
-    glow.addColorStop(0,"rgba(255,255,150,1)");
-    glow.addColorStop(1,"rgba(255,255,150,0)");
-
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(player.x+7, player.y+7, 30, 0, Math.PI*2);
-    ctx.fill();
-
-    // 캐릭터 본체
-    ctx.fillStyle="#FFD700";
-    ctx.beginPath();
-    ctx.arc(player.x+7, player.y+7, 6, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.strokeStyle="#fff";
-    ctx.lineWidth=2;
-    ctx.stroke();
+ctx.fillStyle="yellow";
+ctx.beginPath();
+ctx.arc(player.x,player.y,6,0,Math.PI*2);
+ctx.fill();
 }
 
 function drawSatan(){
-    if(!satan.active) return;
-
-    ctx.shadowColor = "red";
-    ctx.shadowBlur = 15;
-
-    ctx.fillStyle="red";
-    ctx.beginPath();
-    ctx.arc(satan.x+7,satan.y+7,7,0,Math.PI*2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
+if(!satan.active) return;
+ctx.fillStyle="red";
+ctx.beginPath();
+ctx.arc(satan.x,satan.y,7,0,Math.PI*2);
+ctx.fill();
 }
+
+function drawDots(){
+ctx.fillStyle="white";
+dots.forEach(d=>{
+ctx.fillRect(d.x,d.y,2,2);
+});
+}
+
+function drawWater(){
+if(!water.active) return;
+ctx.fillStyle="cyan";
+ctx.beginPath();
+ctx.arc(water.x,water.y,6,0,Math.PI*2);
+ctx.fill();
+}
+
+function drawUI(){
+ctx.fillStyle="white";
+ctx.font = "14px Arial";
+ctx.fillText("점수: "+score,10,20);
+ctx.fillText("Stage: "+stage,400,20);
+ctx.fillText("❤️ "+lives,220,20);
+}
+
 function drawWalls(){
-ctx.fillStyle="#888";
-walls.forEach(w=>ctx.fillRect(w.x,w.y,w.w,w.h));
-}
-
-function drawLight(){
-    ctx.save();
-
-    // 🔥 너무 어둡지 않게 수정
-    ctx.fillStyle="rgba(0,0,0,0.6)";
-    ctx.fillRect(0,0,500,500);
-
-    ctx.globalCompositeOperation="destination-out";
-
-    let g=ctx.createRadialGradient(
-        player.x+7, player.y+7, 10,
-        player.x+7, player.y+7, 120
-    );
-
-    g.addColorStop(0,"rgba(0,0,0,1)");
-    g.addColorStop(0.7,"rgba(0,0,0,0.2)");
-    g.addColorStop(1,"rgba(0,0,0,0)");
-
-    ctx.fillStyle=g;
-    ctx.beginPath();
-    ctx.arc(player.x+7, player.y+7, 120,0,Math.PI*2);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function drawRooms(){
-    rooms.forEach(r=>{
-        ctx.globalAlpha = r.solved ? 0.6 : 0.25;
-
-        ctx.fillStyle = r.solved ? "#00ff88" : "#ff4444";
-        ctx.fillRect(r.x, r.y, 30, 30);
-
-        ctx.globalAlpha = 1;
-    });
-}
+ctx.fillStyle="#00f";
+walls.forEach(w=>{
+ctx.fillRect(w.x,w.y,w.w,w.h);
+});
+}    
 
 function gameLoop(){
-    ctx.clearRect(0,0,500,500);
+ctx.clearRect(0,0,500,500);
 
-    if(gameStarted){
-        move();
-        moveSatan();
+if(gameStarted){
+    move();
+    moveSatan();
 
-        drawWalls();
-        drawRooms();
+    eatDots();   // 여기서 자동으로 문제 열림
+}
 
-        drawLight();
+checkWater();
+checkHit();
+checkCenter();
 
-        drawPlayer();
-        drawSatan();
+drawDots();
+drawWater();
+drawPlayer();
+drawSatan();
+drawUI();
+drawWalls();
+}
 
-        checkRoom();
-        checkHit();
-        checkWin();
-    }
-
-    requestAnimationFrame(gameLoop);
+requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
