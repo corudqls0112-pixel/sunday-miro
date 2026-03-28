@@ -159,17 +159,37 @@ function loadStage(){
     satan.active=false;
     freeze=false;
     satan.speed = 1 + stage*0.3;
+
+    // walls 생성
+    loadWallsFromGrid(stage-1);
+
+    // dots 벽 안쪽으로 생성
     dots=[];
     for(let i=0;i<80;i++){
-        dots.push({x:Math.random()*480,y:Math.random()*480});
+        let x=0,y=0,ok=false;
+        while(!ok){
+            x=Math.random()*450; y=Math.random()*450; ok=true;
+            for(let w of walls){
+                if(x>w.x && x<w.x+w.w && y>w.y && y<w.y+w.h){ ok=false; break; }
+            }
+        }
+        dots.push({x,y});
     }
-    water={x:Math.random()*450,y:Math.random()*450,active:true};
-    loadWallsFromGrid(stage-1);
-    
-    setTimeout(()=>{ showAlert("⏳ 곧 사탄 등장..."); }, 5000);
-    setTimeout(()=>{ satan.active=true; showAlert("😈 사탄 등장!"); }, 8000);
-}
 
+    // water 위치도 벽 안쪽
+    let ok=false;
+    while(!ok){
+        water={x:Math.random()*450,y:Math.random()*450,active:true};
+        ok=true;
+        for(let w of walls){
+            if(water.x>w.x && water.x<w.x+w.w && water.y>w.y && water.y<w.y+w.h){ ok=false; break; }
+        }
+    }
+
+    setTimeout(()=>{ showAlert("⏳ 곧 사탄 등장..."); }, 500);
+    setTimeout(()=>{ satan.active=true; showAlert("😈 사탄 등장!"); }, 2000);
+}
+    
 // 충돌 검사
 function collide(obj,x,y){
     for(let w of walls){
