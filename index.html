@@ -497,29 +497,38 @@ ctx.fillRect(w.x,w.y,w.w,w.h);
 }    
 
 function gameLoop(){
-ctx.clearRect(0,0,500,500);
+    ctx.clearRect(0,0,500,500);
 
-if(gameStarted){
-    move();
-    moveSatan();
+    if(gameStarted){
+        move();
+        moveSatan();
+        eatDots();
+    }
 
-    eatDots();   // 여기서 자동으로 문제 열림
+    checkWater();
+    checkHit();
+    checkCenter();
+
+    drawDots();
+    drawWater();
+    drawPlayer();
+    drawSatan();
+    drawUI();
+    drawWalls();
+
+    requestAnimationFrame(gameLoop); // 🔹 반드시 함수 끝에서 계속 호출
 }
 
-checkWater();
-checkHit();
-checkCenter();
-
-drawDots();
-drawWater();
-drawPlayer();
-drawSatan();
-drawUI();
-drawWalls();
+// 게임 시작 버튼
+function startGame(){
+    document.getElementById("startScreen").style.display = "none";
+    gameStarted = true;
+    loadStage();
 }
 
+// 초기 루프 한 번만 시작
 requestAnimationFrame(gameLoop);
-}
+    
 // 시작 버튼 이벤트 연결
 document.getElementById("startButton").addEventListener("click", startGame);
 
