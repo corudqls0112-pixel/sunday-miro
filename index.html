@@ -49,7 +49,7 @@ button {margin:5px; padding:10px;}
 
 <div id="startScreen">
 <h1>💧 생명의 물</h1>
-<button onclick="startGame()">시작</button>
+<button id="startButton">시작</button>
 </div>
 
 <div id="ending">
@@ -93,11 +93,11 @@ const questions=[
 ];
 
 function startGame(){
-document.getElementById("startScreen").style.display="none";
-gameStarted=true;
-loadStage();
+    document.getElementById("startScreen").style.display = "none";
+    gameStarted = true;
+    loadStage();
 }
-
+    
 function showAlert(text){
 let a=document.getElementById("alert");
 a.innerText=text;
@@ -519,6 +519,8 @@ drawWalls();
 
 requestAnimationFrame(gameLoop);
 }
+// 시작 버튼 이벤트 연결
+document.getElementById("startButton").addEventListener("click", startGame);
 
 gameLoop();
 </script>
